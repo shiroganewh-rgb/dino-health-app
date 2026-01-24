@@ -132,15 +132,37 @@
             margin-top: 1rem;
         }
 
-        .stage-dot {
-            width: 12px;
-            height: 12px;
+        .stage-thumb {
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             background: #e2e8f0;
+            cursor: pointer;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all 0.2s;
         }
 
-        .stage-dot.completed {
-            background: #667eea;
+        .stage-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+
+        .stage-thumb.active {
+            border-color: #667eea;
+            transform: scale(1.2);
+            box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .stage-thumb.locked {
+            cursor: not-allowed;
+            opacity: 0.5;
+            background: #cbd5e1;
         }
     </style>
 </head>
@@ -234,35 +256,84 @@
                 const card = document.createElement('div');
                 card.className = `dino-card ${!isUnlocked ? 'locked' : ''}`;
 
+                // 現在表示中のステージ（初期値は最大ステージまたは0）
+                let currentDisplayStage = isUnlocked ? maxStage : 0;
+                const scale = dino.scale || 1.0;
+
+                // カードのユニークID
+                const cardId = `card-${dinoKey}`;
+                card.id = cardId;
+
+                let content = '';
+
                 if (isUnlocked) {
                     const progress = ((maxStage + 1) / 4) * 100;
                     const stars = '★'.repeat(maxStage + 1) + '☆'.repeat(3 - maxStage);
-                    const scale = dino.scale || 1.0;
 
-                    card.innerHTML = `
-                        <img src="assets/characters/${dino.stages[maxStage]}" alt="${dino.name}" class="dino-image" style="transform: scale(${scale})">
-                        <div class="dino-name">${dino.name}</div>
+                    content = `
+                        <div class="image-area">
+                            <img src="assets/characters/${dino.stages[maxStage]}" 
+                                 alt="${dino.name}" 
+                                 class="dino-image main-img" 
+                                 style="transform: scale(${scale})">
+                        </div>
+                        <div class="dino-name name-display">${dino.name}</div>
                         <div class="progress-text">到達段階: ${maxStage + 1}/4</div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${progress}%"></div>
                         </div>
                         <div class="stars">${stars}</div>
-                        <div class="stages-preview">
-                            ${[0, 1, 2, 3].map(i => `<div class="stage-dot ${i <= maxStage ? 'completed' : ''}"></div>`).join('')}
-                        </div>
                     `;
                 } else {
-                    card.innerHTML = `
+                    content = `
                         <div class="lock-icon">🔒</div>
-                        <div class="dino-name">${dino.name}</div>
+                        <div class="dino-name">？？？</div>
                         <div class="progress-text">未発見</div>
-                        <div class="stages-preview">
-                            ${[0, 1, 2, 3].map(i => `<div class="stage-dot"></div>`).join('')}
-                        </div>
                     `;
                 }
 
+                // サムネイル生成
+                content += '<div class="stages-preview">';
+                for (let i = 0; i < 4; i++) {
+                    const isStageUnlocked = i <= maxStage;
+                    const thumbClass = `stage-thumb ${i === currentDisplayStage && isUnlocked ? 'active' : ''} ${!isStageUnlocked ? 'locked' : ''}`;
+                    const imgContent = isStageUnlocked
+                        ? `<img src="assets/characters/${dino.stages[i]}" alt="Stage ${i}">`
+                        : '';
+
+                    // クリックイベントは後で付与するか、インラインで書く
+                    // ここではインラインで updateDinoDisplay を呼ぶ形にする
+                    const onClick = isStageUnlocked
+                        ? `onclick="updateDinoDisplay('${dinoKey}', ${i}, ${scale})"`
+                        : '';
+
+                    content += `<div class="${thumbClass}" ${onClick}>${imgContent}</div>`;
+                }
+                content += '</div>';
+
+                card.innerHTML = content;
                 grid.appendChild(card);
+            });
+        }
+
+        // 表示切り替え関数
+        window.updateDinoDisplay = function (dinoKey, stage, scale) {
+            const card = document.getElementById(`card-${dinoKey}`);
+            if (!card) return;
+
+            const dino = dinosaurs[dinoKey];
+
+            // 画像更新
+            const img = card.querySelector('.main-img');
+            if (img) {
+                img.src = `assets/characters/${dino.stages[stage]}`;
+            }
+
+            // サムネイルのactive状態更新
+            const thumbs = card.querySelectorAll('.stage-thumb');
+            thumbs.forEach((thumb, index) => {
+                if (index === stage) thumb.classList.add('active');
+                else thumb.classList.remove('active');
             });
         }
 

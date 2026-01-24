@@ -306,6 +306,7 @@
             width: 100px;
             height: 100px;
             image-rendering: pixelated;
+            object-fit: contain;
             margin-bottom: 0.5rem;
         }
 
@@ -367,12 +368,86 @@
         .btn-secondary:hover {
             background: #cbd5e1;
         }
+
+        .settings-btn {
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .settings-btn:hover {
+            background: #cbd5e1;
+        }
+
+        .backup-area {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .backup-desc {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .backup-textarea {
+            width: 100%;
+            height: 100px;
+            padding: 0.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+            margin-bottom: 0.5rem;
+        }
+
+        .copy-btn {
+            background: #3b82f6;
+            color: white;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .restore-btn {
+            background: #ef4444;
+            color: white;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>📝 体調記録</h1>
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h1 style="margin: 0;">🦕 体調モニター</h1>
+            <div style="display: flex; align-items: center;">
+                <a href="history-calendar.html"
+                    style="background: #667eea; color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">📅
+                    カレンダー</a>
+                <a href="encyclopedia.html"
+                    style="background: #f59e0b; color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; margin-left: 0.5rem;">📚
+                    図鑑</a>
+                <button class="settings-btn" onclick="openSettings()">⚙️</button>
+            </div>
+        </header>
 
         <!-- ステップ1 -->
         <div id="step1">
@@ -487,6 +562,41 @@
         </div>
     </div>
 
+    <!-- 設定モーダル -->
+    <div class="selection-modal" id="settingsModal">
+        <div class="selection-content">
+            <h2 class="selection-title">⚙️ 設定・データ管理</h2>
+            <div class="backup-area">
+                <p class="backup-desc">
+                    現在のアプリデータをバックアップできます。以下のテキストエリアに表示されたデータをコピーし、安全な場所に保存してください。
+                </p>
+                <textarea id="exportText" class="backup-textarea" readonly></textarea>
+                <button class="copy-btn" onclick="exportBackup()">コピーしてバックアップ</button>
+            </div>
+            <div class="backup-area">
+                <p class="backup-desc">
+                    バックアップしたデータを復元できます。保存したデータを以下のテキストエリアに貼り付けてください。
+                </p>
+                <textarea id="importText" class="backup-textarea" placeholder="ここにバックアップデータを貼り付けてください"></textarea>
+                <button class="restore-btn" onclick="importBackup()">データを復元</button>
+            </div>
+            <button class="restore-btn" onclick="importBackup()">データを復元</button>
+        </div>
+
+        <div class="backup-area">
+            <p class="backup-desc" style="font-weight: 600; color: #1e293b;">🔔 通知リマインダー</p>
+            <p class="backup-desc">
+                毎朝 7:30 に記録忘れ防止の通知を表示します。<br>
+                ※アプリを完全に終了させていると通知されない場合があります。
+            </p>
+            <button id="notifyBtn" class="copy-btn" style="background: #8b5cf6;"
+                onclick="toggleNotification()">通知設定をONにする</button>
+        </div>
+
+        <button class="btn-secondary" onclick="closeSettings()">閉じる</button>
+    </div>
+    </div>
+
     <script>
         // データ保存用
         let records = JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]');
@@ -597,9 +707,16 @@
             };
         }
 
+        // 仮想日付取得（AM4:00切り替え）
+        function getVirtualDate() {
+            const now = new Date();
+            now.setHours(now.getHours() - 4);
+            return now;
+        }
+
         // 月次リセットチェック
         function checkMonthlyReset() {
-            const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+            const currentMonth = getVirtualDate().toISOString().slice(0, 7); // "YYYY-MM"
 
             if (growthData && growthData.selectionMonth && growthData.selectionMonth !== currentMonth) {
                 // 月が変わった場合のリセット処理
@@ -628,7 +745,8 @@
                 };
             }
             growthData.selectedDinosaur = type;
-            growthData.selectionMonth = new Date().toISOString().slice(0, 7); // 現在の月を記録
+            growthData.selectedDinosaur = type;
+            growthData.selectionMonth = getVirtualDate().toISOString().slice(0, 7); // 現在の月を記録
             localStorage.setItem('growthData', JSON.stringify(growthData));
 
             document.getElementById('selectionModal').classList.remove('show');
@@ -642,7 +760,7 @@
             if (!encyclopedia[dinosaur] || encyclopedia[dinosaur].maxStage < stage) {
                 encyclopedia[dinosaur] = {
                     maxStage: stage,
-                    completedDate: new Date().toISOString().split('T')[0]
+                    completedDate: getVirtualDate().toISOString().split('T')[0]
                 };
                 localStorage.setItem('encyclopedia', JSON.stringify(encyclopedia));
             }
@@ -650,7 +768,7 @@
 
         // キャラクター表示更新
         function updateCharacterDisplay(isGrowing = false) {
-            const stageInfo = getStage(growthData.consecutiveDays);
+            const stageInfo = getStage(growthData.selectedDinosaur ? growthData.consecutiveDays : 0); // selectedDinosaurがnullの場合は0日として扱う
             const img = document.getElementById('characterEmoji');
 
             if (isGrowing) {
@@ -730,7 +848,7 @@
         }
 
         function recordValue(value, memo = '') {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getVirtualDate().toISOString().split('T')[0];
             const time = new Date().toLocaleTimeString('ja-JP');
 
             // 既存の同日記録を探す
@@ -864,6 +982,148 @@
             };
             reader.readAsText(file);
         }
+        // 設定モーダル
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+
+            // 開いた時にエクスポートデータを自動生成
+            const data = {
+                version: 1,
+                timestamp: Date.now(),
+                simpleHealthRecords: JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]'),
+                growthData: JSON.parse(localStorage.getItem('growthData') || '{}'),
+                encyclopedia: JSON.parse(localStorage.getItem('encyclopedia') || '{}')
+            };
+            document.getElementById('exportText').value = JSON.stringify(data);
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function exportBackup() {
+            const text = document.getElementById('exportText');
+            text.select();
+            document.execCommand('copy');
+
+            // クリップボードAPIも試行
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text.value).then(() => {
+                    alert('データをコピーしました！\nメモ帳などに貼り付けて保存してください。');
+                }).catch(() => {
+                    alert('コピーしました（テキストエリアを選択済み）');
+                });
+            } else {
+                alert('コピーしました（テキストエリアを選択済み）');
+            }
+        }
+
+        function importBackup() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                alert('データを貼り付けてください');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(text);
+
+                // 簡易バリデーション
+                if (!data.simpleHealthRecords || !data.growthData) {
+                    throw new Error('データの形式が正しくありません');
+                }
+
+                if (!confirm('現在のデータは全て上書きされます。\n本当に復元しますか？')) {
+                    return;
+                }
+
+                localStorage.setItem('simpleHealthRecords', JSON.stringify(data.simpleHealthRecords));
+                localStorage.setItem('growthData', JSON.stringify(data.growthData));
+                if (data.encyclopedia) {
+                    localStorage.setItem('encyclopedia', JSON.stringify(data.encyclopedia));
+                }
+
+                alert('データを復元しました！\nアプリを再起動します。');
+                location.reload();
+
+            } catch (e) {
+                alert('エラー：データが正しく読み込めませんでした。\n' + e.message);
+            }
+        }
+
+        // 通知機能
+        function initNotification() {
+            updateNotifyButton();
+            checkAndNotify();
+
+            // 毎分チェック（アプリ起動中）
+            setInterval(() => {
+                const now = new Date();
+                if (now.getHours() === 7 && now.getMinutes() === 30) {
+                    checkAndNotify();
+                }
+            }, 60000);
+        }
+
+        function updateNotifyButton() {
+            const btn = document.getElementById('notifyBtn');
+            if (Notification.permission === 'granted') {
+                btn.textContent = '通知はONです ✅';
+                btn.style.background = '#10b981';
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = '通知がブロックされています 🚫';
+                btn.style.background = '#ef4444';
+            } else {
+                btn.textContent = '通知設定をONにする 🔔';
+                btn.style.background = '#8b5cf6';
+            }
+        }
+
+        function toggleNotification() {
+            if (Notification.permission === 'granted') {
+                alert('通知は既に有効です。');
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                updateNotifyButton();
+                if (permission === 'granted') {
+                    new Notification('通知がONになりました', {
+                        body: '毎朝7:30にリマインダーをお届けします（アプリを開いておくことを推奨します）',
+                        icon: 'assets/icons/icon-192.png'
+                    });
+                }
+            });
+        }
+
+        function checkAndNotify() {
+            if (Notification.permission !== 'granted') return;
+
+            const now = new Date();
+            const todayStr = getVirtualDate().toISOString().split('T')[0];
+
+            // 今日の記録があるか確認
+            const hasRecord = records.some(r => r.date === todayStr);
+
+            // 7:30以降で、まだ記録がない場合
+            if (!hasRecord) {
+                // アプリ起動時のチェック（7:30過ぎている場合）
+                if (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() >= 30)) {
+                    // 既に今日通知済みかチェックするロジックを入れるのがベストだが、
+                    // 簡易的に「起動時に1回出す」ことにする（ここを調整可能）
+
+                    // 今回はシンプルに通知発行
+                    new Notification('体調記録の時間です', {
+                        body: 'おはようございます！今日の体調を記録して、恐竜を育てましょう🦕',
+                        icon: 'assets/icons/icon-192.png',
+                        tag: 'health-reminder-' + todayStr // 同じ日の重複通知を防ぐタグ
+                    });
+                }
+            }
+        }
+
+        // 起動時に通知初期化
+        initNotification();
     </script>
 </body>
 
