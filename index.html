@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体調モニター - 恐竜育成</title>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="体調モニター">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    <meta name="description" content="毎日の体調を記録して恐竜を育てよう">
+
+    <!-- Common Modules -->
+    <script src="js/date-utils.js"></script>
+    <script src="js/storage-utils.js"></script>
+    <script src="dinosaur-species.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/unlock-system.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+        }
+
+        .emoji-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .emoji-btn {
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 2rem;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .emoji-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .number-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin: 2rem 0;
+        }
+
+        .number-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .number-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .result {
+            text-align: center;
+            padding: 2rem;
+            background: #f0fdf4;
+            border-radius: 12px;
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h2 {
+            color: #10b981;
+            margin: 0 0 1rem 0;
+        }
+
+        .history {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .history-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .back-btn {
+            background: #94a3b8;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .back-btn:hover {
+            background: #64748b;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .data-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .export-btn,
+        .import-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .export-btn:hover,
+        .import-btn:hover {
+            background: #f0f4ff;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .character-display {
+            text-align: center;
+            padding: 2rem 1rem;
+            margin: 1rem 0;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+            border-radius: 16px;
+        }
+
+        .character-emoji {
+            width: 220px;
+            height: 220px;
+            display: block;
+            margin: 0 auto 0.5rem;
+            image-rendering: pixelated;
+            object-fit: contain;
+            background: transparent;
+            animation: bounce 2s ease-in-out infinite;
+            transition: transform 0.3s ease;
+            /* 画像を中央に配置し、サイズを統一 */
+            object-position: center;
+        }
+
+        .character-emoji.growing {
+            animation: grow 1s ease-in-out;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes grow {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+
+            25% {
+                transform: scale(1.5) rotate(-10deg);
+            }
+
+            50% {
+                transform: scale(1.2) rotate(10deg);
+            }
+
+            75% {
+                transform: scale(1.5) rotate(-10deg);
+            }
+
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        .character-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .character-stats {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .next-stage {
+            font-size: 0.85rem;
+            color: #10b981;
+            margin-top: 0.5rem;
+        }
+
+        .selection-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .selection-modal.show {
+            display: flex;
+        }
+
+        .selection-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .selection-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .dino-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            /* 折り返し */
+            justify-content: center;
+            /* 中央寄せ */
+            max-height: 50vh;
+            /* 画面の半分程度の高さに制限 */
+            overflow-y: auto;
+            /* 縦スクロールを有効化 */
+            padding: 10px;
+            /* スクロールバーとの余白 */
+        }
+
+        .dino-card {
+            flex: 1;
+            padding: 1.5rem;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dino-card:hover {
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .dino-card img {
+            width: 120px;
+            height: 120px;
+            display: block;
+            margin: 0 auto 0.5rem;
+            image-rendering: pixelated;
+            object-fit: contain;
+            background: transparent;
+            /* 画像を中央に配置し、サイズを統一 */
+            object-position: center;
+        }
+
+        .dino-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .memo-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .memo-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .settings-btn {
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .settings-btn:hover {
+            background: #cbd5e1;
+        }
+
+        .backup-area {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .backup-desc {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .backup-textarea {
+            width: 100%;
+            height: 100px;
+            padding: 0.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: vertical;
+            margin-bottom: 0.5rem;
+        }
+
+        .copy-btn {
+            background: #3b82f6;
+            color: white;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .restore-btn {
+            background: #ef4444;
+            color: white;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="container">
+            <header class="app-header">
+                <h1 style="margin: 0; font-size: 1.5rem;">🦕 体調モニター</h1>
+                <div class="header-buttons">
+                    <button class="settings-btn" onclick="openSettings()" aria-label="設定">⚙️</button>
+                </div>
+            </header>
+
+            <style>
+                .app-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                }
+
+                .header-buttons {
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .icon-link {
+                    background: #f1f5f9;
+                    color: #1e293b;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 12px;
+                    text-decoration: none;
+                    font-size: 1.5rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2px solid #e2e8f0;
+                    transition: transform 0.1s;
+                }
+
+                .icon-link:active {
+                    transform: scale(0.95);
+                }
+
+                .settings-btn {
+                    background: #f1f5f9;
+                    color: #1e293b;
+                    width: 44px;
+                    height: 44px;
+                    padding: 0;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 12px;
+                    font-size: 1.5rem;
+                    margin-left: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                /* モーダルのスタイル修正 */
+                .selection-content {
+                    width: 90% !important;
+                    max-width: 400px !important;
+                    padding: 1.5rem !important;
+                    max-height: 85vh;
+                    overflow-y: auto;
+                }
+
+                /* スマホ用調整 */
+                @media (max-width: 480px) {
+                    body {
+                        margin: 0;
+                        padding: 0.5rem;
+                    }
+
+                    .container {
+                        padding: 1rem;
+                        border-radius: 12px;
+                    }
+
+                    .app-header {
+                        flex-direction: row;
+                        margin-bottom: 1.5rem;
+                    }
+
+                    h1 {
+                        font-size: 1.2rem !important;
+                    }
+
+                    /* ボタンサイズ最適化（タッチ対応） */
+                    .emoji-btn {
+                        padding: 1.25rem;
+                        min-width: 90px;
+                        font-size: 1.8rem;
+                    }
+
+                    .number-btn {
+                        padding: 0.875rem;
+                        font-size: 1.1rem;
+                    }
+
+                    /* キャラクター画像サイズ調整 */
+                    .character-emoji {
+                        width: 180px;
+                        height: 180px;
+                    }
+
+                    /* モーダル調整 */
+                    .selection-content {
+                        width: 95% !important;
+                        padding: 1.25rem !important;
+                    }
+
+                    .dino-card {
+                        min-width: 120px;
+                        padding: 1.25rem;
+                    }
+
+                    /* 設定画面調整 */
+                    .settings-section {
+                        padding: 1.25rem;
+                    }
+
+                    .action-btn {
+                        padding: 1rem 1.25rem;
+                        font-size: 0.95rem;
+                    }
+                }
+            </style>
+
+            <!-- ステップ1 -->
+            <div id="step1">
+                <p style="text-align: center; color: #64748b;">今日の体調はどうですか？</p>
+                <div class="emoji-buttons">
+                    <button class="emoji-btn" onclick="selectRange('good')">
+                        <div>😊</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">良い</div>
+                    </button>
+                    <button class="emoji-btn" onclick="selectRange('normal')">
+                        <div>😐</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">普通</div>
+                    </button>
+                    <button class="emoji-btn" onclick="selectRange('bad')">
+                        <div>😞</div>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem;">悪い</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ステップ2 -->
+            <div id="step2" class="hidden">
+                <button class="back-btn" onclick="goBack()">← 戻る</button>
+                <p style="text-align: center; color: #64748b;">具体的には？</p>
+                <div class="number-buttons" id="numberButtons"></div>
+            </div>
+
+            <!-- ステップ3: メモ入力 -->
+            <div id="step3" class="hidden">
+                <button class="back-btn" onclick="goBackToStep2()">← 戻る</button>
+                <p style="text-align: center; color: #64748b; margin-bottom: 1rem;">一言メモ（任意）</p>
+                <textarea id="memoInput" class="memo-input" placeholder="今日の体調について一言...（例: よく眠れた、頭痛がする、など）"
+                    maxlength="100"></textarea>
+                <div class="btn-group">
+                    <button class="btn-secondary" onclick="skipMemo()">スキップ</button>
+                    <button class="btn-primary" onclick="saveMemo()">記録する</button>
+                </div>
+            </div>
+
+            <!-- キャラクター表示 -->
+            <div class="character-display" id="characterDisplay">
+                <img src="assets/characters/trex_egg.png" alt="タマゴ" class="character-emoji" id="characterEmoji">
+                <div class="character-name" id="characterName">タマゴ</div>
+                <div class="character-stats" id="characterStats">連続記録: 0日</div>
+                <div class="next-stage" id="nextStage">記録すると孵化します！</div>
+            </div>
+
+            <!-- 結果 -->
+            <div id="result" class="result">
+                <h2>✅ 記録完了！</h2>
+                <p>体調値: <span id="recordedValue">-</span></p>
+                <p id="encouragement">素晴らしい！</p>
+            </div>
+
+            <!-- 履歴 -->
+            <div class="history">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <h3>📊 最近の記録 (<span id="recordCount">0</span>件)</h3>
+                </div>
+                <div class="data-controls">
+                    <button class="export-btn" onclick="exportData()">⬇️ データエクスポート</button>
+                    <button class="import-btn" onclick="document.getElementById('fileInput').click()">⬆️
+                        データインポート</button>
+                    <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
+                </div>
+                <div id="historyList"></div>
+            </div>
+        </div>
+
+        <!-- 恐竜選択モーダル -->
+        <div class="selection-modal" id="selectionModal">
+            <div class="selection-content">
+                <h2 class="selection-title">🦖 パートナーを選ぶ</h2>
+                <p style="color: #64748b;">一緒に成長する恐竜を選んでください</p>
+                <div class="dino-options" id="dinoSelectionGrid">
+                    <!-- JavaScriptで動的生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定モーダル -->
+        <div class="selection-modal" id="settingsModal">
+            <div class="selection-content" style="max-width: 600px;">
+                <h2 class="selection-title">⚙️ 設定・データ管理</h2>
+                <p style="color: #64748b; margin-bottom: 1.5rem; text-align: center;">アプリのデータをバックアップ・復元できます</p>
+
+                <!-- バックアップセクション -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <span class="section-icon">💾</span>
+                        <h3 class="section-title">データのバックアップ</h3>
+                    </div>
+                    <p class="section-desc">
+                        現在の体調記録と恐竜の育成データをバックアップできます。
+                    </p>
+                    <textarea id="exportText" class="backup-textarea" readonly
+                        placeholder="バックアップデータがここに表示されます"></textarea>
+                    <button class="action-btn backup-btn" onclick="exportBackup()">
+                        <span>📋</span> データをコピー
+                    </button>
+                </div>
+
+                <!-- 復元セクション -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <span class="section-icon">♻️</span>
+                        <h3 class="section-title">データの復元</h3>
+                    </div>
+                    <p class="section-desc">
+                        バックアップしたデータを復元できます。
+                    </p>
+                    <textarea id="importText" class="backup-textarea" placeholder="バックアップデータをここに貼り付けてください"></textarea>
+                    <button class="action-btn restore-btn" onclick="importBackup()">
+                        <span>⚡</span> データを復元
+                    </button>
+                </div>
+
+                <!-- 通知セクション -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <span class="section-icon">🔔</span>
+                        <h3 class="section-title">通知リマインダー</h3>
+                    </div>
+                    <p class="section-desc">
+                        毎朝 7:30 に記録忘れ防止の通知を表示します。<br>
+                        <small style="color: #94a3b8;">※アプリを完全に終了させていると通知されない場合があります</small>
+                    </p>
+                    <button id="notifyBtn" class="action-btn notify-btn" onclick="toggleNotification()">
+                        <span>🔔</span> 通知設定をONにする
+                    </button>
+                </div>
+
+                <button class="btn-secondary" style="width: 100%; margin-top: 1rem;"
+                    onclick="closeSettings()">閉じる</button>
+            </div>
+        </div>
+
+        <style>
+            .settings-section {
+                background: #f8fafc;
+                border: 2px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .section-header {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .section-icon {
+                font-size: 1.5rem;
+                width: 40px;
+                height: 40px;
+                background: white;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            .section-title {
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: #1e293b;
+                margin: 0;
+            }
+
+            .section-desc {
+                font-size: 0.9rem;
+                color: #64748b;
+                margin-bottom: 1rem;
+                line-height: 1.6;
+            }
+
+            .action-btn {
+                width: 100%;
+                padding: 0.875rem 1.5rem;
+                border: none;
+                border-radius: 10px;
+                font-size: 1rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+
+            .action-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .action-btn:active {
+                transform: translateY(0);
+            }
+
+            .backup-btn {
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                color: white;
+            }
+
+            .backup-btn:hover {
+                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            }
+
+            .restore-btn {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: white;
+            }
+
+            .restore-btn:hover {
+                background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            }
+
+            .notify-btn {
+                background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                color: white;
+            }
+
+            .notify-btn:hover {
+                background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            }
+
+            .backup-textarea {
+                width: 100%;
+                min-height: 100px;
+                padding: 0.75rem;
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                font-family: 'Courier New', monospace;
+                font-size: 0.85rem;
+                resize: vertical;
+                margin-bottom: 0.75rem;
+                background: white;
+                transition: border-color 0.2s;
+            }
+
+            .backup-textarea:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+            .backup-textarea::placeholder {
+                color: #cbd5e1;
+            }
+        </style>
+    </div>
+
+    <script>
+        // データ保存用（共通モジュールを使用）
+        let records = getHealthRecords();
+        let growthData = getGrowthData();
+
+        // 恐竜データ定義（簡易アクセス用のマッピング - DINOSAUR_SPECIESをベースに作成）
+        const dinosaurs = {};
+        if (typeof DINOSAUR_SPECIES !== 'undefined') {
+            for (const [id, species] of Object.entries(DINOSAUR_SPECIES)) {
+                dinosaurs[id] = {
+                    name: species.name,
+                    scale: 1.2,
+                    stages: {
+                        0: { image: species.stages[0].image, name: species.stages[0].name },
+                        1: { image: species.stages[1].image, name: species.stages[1].name },
+                        2: { image: species.stages[2].image, name: species.stages[2].name },
+                        3: { image: species.stages[3].image, name: species.stages[3].name }
+                    }
+                };
+            }
+        }
+
+        // 成長データの初期化
+        if (!growthData) {
+            growthData = {
+                selectedDinosaur: null,
+                consecutiveDays: 0,
+                lastRecordDate: null,
+                selectionDate: null,
+                currentStage: 0
+            };
+            saveGrowthData(growthData);
+        }
+
+        // アンロックシステムの初期化
+        initializeUnlockedSpecies();
+
+        // データが存在しない場合、選択モーダルを表示
+        window.addEventListener('load', () => {
+            renderDinoSelection(); // 選択画面生成
+            checkCycleReset(); // 30日サイクルチェック
+
+            if (!growthData.selectedDinosaur) {
+                document.getElementById('selectionModal').classList.add('show');
+            } else {
+                updateCharacterDisplay();
+            }
+        });
+
+        // 成長段階取得
+        function getStage(days) {
+            const dino = dinosaurs[growthData.selectedDinosaur];
+            let stageLevel = 0;
+            let next = 1;
+
+            if (days >= 22) { stageLevel = 3; next = null; }
+            else if (days >= 8) { stageLevel = 2; next = 22 - days; }
+            else if (days >= 1) { stageLevel = 1; next = 8 - days; }
+
+            return {
+                stage: stageLevel,
+                image: dino.stages[stageLevel].image, // パスはdinosaur-species.jsに既に含まれている
+                name: dino.stages[stageLevel].name,
+                next: next
+            };
+        }
+
+
+
+        // 30日サイクルリセットチェック
+        function checkCycleReset() {
+            const today = getTodayString();
+
+            // 移行措置: selectionDateがなく、selectedDinosaurがいる場合
+            if (growthData.selectedDinosaur && !growthData.selectionDate) {
+                let newStartDate = today;
+
+                if (growthData.selectionMonth) {
+                    const monthPrefix = growthData.selectionMonth;
+                    const sortedRecords = records.filter(r => r.date.startsWith(monthPrefix)).sort((a, b) => a.date.localeCompare(b.date));
+
+                    if (sortedRecords.length > 0) {
+                        newStartDate = sortedRecords[0].date;
+                    } else {
+                        if (monthPrefix === today.slice(0, 7)) {
+                            newStartDate = today;
+                        } else {
+                            newStartDate = `${monthPrefix}-01`;
+                        }
+                    }
+                }
+
+                growthData.selectionDate = newStartDate;
+                saveGrowthData(growthData);
+            }
+
+            // リセットチェック（共通モジュール使用）
+            if (shouldResetCycle(growthData, today)) {
+                alert('パートナーとの旅から30日が経過しました！\\n新しいパートナーを選んでください。');
+
+                // 図鑑に現在の状態を保存
+                completeCurrentCycle(growthData);
+
+                // データリセット
+                growthData = createInitialGrowthData(null);
+                growthData.selectedDinosaur = null; // 選択なしに戻す
+                saveGrowthData(growthData);
+
+                document.getElementById('selectionModal').classList.add('show');
+            }
+        }
+
+        // 恐竜選択
+        function selectDinosaur(type) {
+            growthData = createInitialGrowthData(type);
+            saveGrowthData(growthData);
+
+            document.getElementById('selectionModal').classList.remove('show');
+            updateCharacterDisplay();
+        }
+
+        // 恐竜選択画面の動的生成（アンロック済みのみ表示）
+        function renderDinoSelection() {
+            const grid = document.getElementById('dinoSelectionGrid');
+            grid.innerHTML = '';
+
+            // アンロック済み恐竜のみ取得
+            const selectable = getSelectableSpecies();
+
+            selectable.forEach(species => {
+                const key = species.id;
+                const dino = dinosaurs[key];
+                if (!dino) return; // マッピングにない場合はスキップ
+
+                const card = document.createElement('div');
+                card.className = 'dino-card';
+                card.onclick = () => selectDinosaur(key);
+
+                // scale適用
+                const scale = dino.scale || 1.0;
+
+                card.innerHTML = `
+                    <img src="${dino.stages[0].image}" alt="${dino.name}" style="transform: scale(${scale})">
+                    <div class="dino-name">${dino.name}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 図鑑更新（共通モジュールのラッパー）
+        function updateEncyclopedia(dinosaur, stage) {
+            updateEncyclopediaEntry(dinosaur, stage);
+        }
+
+        // キャラクター表示更新
+        function updateCharacterDisplay(isGrowing = false) {
+            const stageInfo = getStage(growthData.selectedDinosaur ? growthData.consecutiveDays : 0); // selectedDinosaurがnullの場合は0日として扱う
+            const img = document.getElementById('characterEmoji');
+
+            if (isGrowing) {
+                img.classList.add('growing');
+                setTimeout(() => img.classList.remove('growing'), 1000);
+            }
+
+            img.src = stageInfo.image;
+            img.alt = stageInfo.name;
+            document.getElementById('characterName').textContent = stageInfo.name;
+
+            // スケール適用
+            const dino = dinosaurs[growthData.selectedDinosaur];
+            if (dino && dino.scale) {
+                img.style.transform = `scale(${dino.scale})`;
+            } else {
+                img.style.transform = 'scale(1)';
+            }
+
+            document.getElementById('characterStats').textContent = `連続記録: ${growthData.consecutiveDays}日`;
+
+            if (stageInfo.next !== null) {
+                document.getElementById('nextStage').textContent =
+                    stageInfo.next === 1 ? '記録すると孵化します！' : `あと${stageInfo.next}日で成長！`;
+            } else {
+                document.getElementById('nextStage').textContent = '最大レベル達成！';
+            }
+        }
+
+        function selectRange(range) {
+            const numbers = range === 'good' ? [8, 9, 10] :
+                range === 'normal' ? [4, 5, 6, 7] : [1, 2, 3];
+
+            const container = document.getElementById('numberButtons');
+            container.innerHTML = '';
+
+            numbers.forEach(num => {
+                const btn = document.createElement('button');
+                btn.className = 'number-btn';
+                btn.textContent = num;
+                btn.onclick = () => showMemoStep(num);
+                container.appendChild(btn);
+            });
+
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        let selectedValue = null;
+
+        function showMemoStep(value) {
+            selectedValue = value;
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.remove('hidden');
+            document.getElementById('memoInput').value = '';
+            document.getElementById('memoInput').focus();
+        }
+
+        function goBackToStep2() {
+            document.getElementById('step3').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        function skipMemo() {
+            recordValue(selectedValue, '');
+        }
+
+        function saveMemo() {
+            const memo = document.getElementById('memoInput').value.trim();
+            recordValue(selectedValue, memo);
+        }
+
+        function goBack() {
+            document.getElementById('step1').classList.remove('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function recordValue(value, memo = '') {
+            const today = getTodayString();
+            const time = new Date().toLocaleTimeString('ja-JP');
+
+            // 既存の同日記録を探す
+            const existingIndex = records.findIndex(r => r.date === today);
+
+            const record = {
+                date: today,
+                time: time,
+                value: value,
+                memo: memo,
+                timestamp: Date.now()
+            };
+
+            // 成長システム用変数
+            const isNewRecord = existingIndex === -1;
+            let didGrow = false;
+
+            if (existingIndex !== -1) {
+                // 既存の記録を更新
+                records[existingIndex] = record;
+            } else {
+                // 新規追加
+                records.push(record);
+            }
+
+            saveHealthRecords(records);
+
+            let encouragementMsg = value >= 8 ? '素晴らしい調子です！' :
+                value >= 4 ? '安定していますね。' : '無理せず休んでください。';
+
+            // 成長処理
+            if (isNewRecord && growthData.selectedDinosaur) {
+                const updateResult = updateGrowthData(growthData, today);
+                growthData = updateResult.data;
+                didGrow = updateResult.didGrow;
+
+                // 図鑑更新（成長時）
+                if (didGrow) {
+                    updateEncyclopediaEntry(growthData.selectedDinosaur, updateResult.newStage);
+                }
+                saveGrowthData(growthData);
+
+                // 表示を即時更新
+                updateCharacterDisplay(didGrow);
+
+                // アンロックチェック
+                checkAndNotifyUnlocks(records);
+            }
+
+            if (isNewRecord && didGrow) {
+                const growthInfo = getGrowthInfo(growthData.selectedDinosaur, growthData.consecutiveDays);
+                encouragementMsg = `🎉 おめでとう！${growthInfo.stageName}に成長しました！`;
+            }
+
+            document.getElementById('recordedValue').textContent = value;
+            document.getElementById('encouragement').textContent = encouragementMsg;
+
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.add('hidden');
+            document.getElementById('result').classList.add('show');
+
+            updateHistory();
+        }
+
+        function updateHistory() {
+            const historyList = document.getElementById('historyList');
+            const sorted = [...records].reverse().slice(0, 10);
+
+            document.getElementById('recordCount').textContent = records.length;
+
+            if (sorted.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: #94a3b8;">まだ記録がありません</p>';
+                return;
+            }
+
+            historyList.innerHTML = sorted.map(r => `
+                <div class="history-item">
+                    <span>${r.date} ${r.time}</span>
+                    <strong style="color: #667eea;">体調値: ${r.value}</strong>
+                </div>
+            `).join('');
+        }
+
+        // 初期化
+        updateHistory();
+        updateCharacterDisplay();
+        checkTodayRecord();
+
+        function checkTodayRecord() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecord = records.find(r => r.date === today);
+
+            if (todayRecord) {
+                document.getElementById('step1').classList.add('hidden');
+                document.getElementById('recordedValue').textContent = todayRecord.value;
+                document.getElementById('encouragement').innerHTML =
+                    `今日は既に記録済みです。<br><small style="color: #64748b;">編集する場合は<a href="history-calendar.html" style="color: #667eea;">カレンダー</a>から変更できます。</small>`;
+                document.getElementById('result').classList.add('show');
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(records, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `health-records-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedRecords = JSON.parse(e.target.result);
+                    if (confirm(`${importedRecords.length}件の記録をインポートします。\n現在のデータは上書きされます。よろしいですか？`)) {
+                        records = importedRecords;
+                        localStorage.setItem('simpleHealthRecords', JSON.stringify(records));
+                        updateHistory();
+                        checkTodayRecord();
+                        alert('インポート完了！');
+                        location.reload();
+                    }
+                } catch (error) {
+                    alert('インポートに失敗しました。ファイルが破損している可能性があります。');
+                }
+            };
+            reader.readAsText(file);
+        }
+        // 設定モーダル
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+
+            // 開いた時にエクスポートデータを自動生成
+            const data = {
+                version: 1,
+                timestamp: Date.now(),
+                simpleHealthRecords: JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]'),
+                growthData: JSON.parse(localStorage.getItem('growthData') || '{}'),
+                encyclopedia: JSON.parse(localStorage.getItem('encyclopedia') || '{}')
+            };
+            document.getElementById('exportText').value = JSON.stringify(data);
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function exportBackup() {
+            const text = document.getElementById('exportText');
+            text.select();
+            document.execCommand('copy');
+
+            // クリップボードAPIも試行
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text.value).then(() => {
+                    alert('データをコピーしました！\nメモ帳などに貼り付けて保存してください。');
+                }).catch(() => {
+                    alert('コピーしました（テキストエリアを選択済み）');
+                });
+            } else {
+                alert('コピーしました（テキストエリアを選択済み）');
+            }
+        }
+
+        function importBackup() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                alert('データを貼り付けてください');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(text);
+
+                // 簡易バリデーション
+                if (!data.simpleHealthRecords || !data.growthData) {
+                    throw new Error('データの形式が正しくありません');
+                }
+
+                if (!confirm('現在のデータは全て上書きされます。\n本当に復元しますか？')) {
+                    return;
+                }
+
+                localStorage.setItem('simpleHealthRecords', JSON.stringify(data.simpleHealthRecords));
+                localStorage.setItem('growthData', JSON.stringify(data.growthData));
+                if (data.encyclopedia) {
+                    localStorage.setItem('encyclopedia', JSON.stringify(data.encyclopedia));
+                }
+
+                alert('データを復元しました！\nアプリを再起動します。');
+                location.reload();
+
+            } catch (e) {
+                alert('エラー：データが正しく読み込めませんでした。\n' + e.message);
+            }
+        }
+
+        // 通知機能
+        function initNotification() {
+            updateNotifyButton();
+            checkAndNotify();
+
+            // 毎分チェック（アプリ起動中）
+            setInterval(() => {
+                const now = new Date();
+                if (now.getHours() === 7 && now.getMinutes() === 30) {
+                    checkAndNotify();
+                }
+            }, 60000);
+        }
+
+        function updateNotifyButton() {
+            const btn = document.getElementById('notifyBtn');
+            if (Notification.permission === 'granted') {
+                btn.textContent = '通知はONです ✅';
+                btn.style.background = '#10b981';
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = '通知がブロックされています 🚫';
+                btn.style.background = '#ef4444';
+            } else {
+                btn.textContent = '通知設定をONにする 🔔';
+                btn.style.background = '#8b5cf6';
+            }
+        }
+
+        function toggleNotification() {
+            if (Notification.permission === 'granted') {
+                alert('通知は既に有効です。');
+                return;
+            }
+
+            Notification.requestPermission().then(permission => {
+                updateNotifyButton();
+                if (permission === 'granted') {
+                    new Notification('通知がONになりました', {
+                        body: '毎朝7:30にリマインダーをお届けします（アプリを開いておくことを推奨します）',
+                        icon: 'assets/icons/icon-192.png'
+                    });
+                }
+            });
+        }
+
+        function checkAndNotify() {
+            if (Notification.permission !== 'granted') return;
+
+            const now = new Date();
+            const todayStr = getVirtualDate().toISOString().split('T')[0];
+
+            // 今日の記録があるか確認
+            const hasRecord = records.some(r => r.date === todayStr);
+
+            // 7:30以降で、まだ記録がない場合
+            if (!hasRecord) {
+                // アプリ起動時のチェック（7:30過ぎている場合）
+                if (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() >= 30)) {
+                    // 既に今日通知済みかチェックするロジックを入れるのがベストだが、
+                    // 簡易的に「起動時に1回出す」ことにする（ここを調整可能）
+
+                    // 今回はシンプルに通知発行
+                    new Notification('体調記録の時間です', {
+                        body: 'おはようございます！今日の体調を記録して、恐竜を育てましょう🦕',
+                        icon: 'assets/icons/icon-192.png',
+                        tag: 'health-reminder-' + todayStr // 同じ日の重複通知を防ぐタグ
+                    });
+                }
+            }
+        }
+
+        // 起動時に通知初期化
+        initNotification();
+    </script>
+</body>
+
+</html>
