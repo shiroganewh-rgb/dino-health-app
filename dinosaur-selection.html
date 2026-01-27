@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恐竜を選ぼう - 体調モニター</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .selection-container {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .selection-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+
+        .selection-subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 3rem;
+            font-size: 1rem;
+        }
+
+        .dinosaurs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .dinosaur-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .dinosaur-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .dinosaur-card.selected {
+            border-color: #667eea;
+            border-width: 3px;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .dinosaur-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .dinosaur-card.locked:hover {
+            transform: none;
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        .lock-icon {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .dinosaur-preview {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .dinosaur-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+
+        .dinosaur-scientific {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+
+        .dinosaur-description {
+            font-size: 0.875rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .dinosaur-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .type-carnivore {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .type-herbivore {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        .type-flying {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .unlock-requirement {
+            font-size: 0.75rem;
+            color: #f59e0b;
+            margin-top: 0.5rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .dinosaurs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        .coming-soon {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+        }
+
+        .coming-soon h3 {
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+        }
+
+        .coming-soon p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .app-version {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.8rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="selection-container">
+        <h1 class="selection-title">🦖 育てる恐竜を選ぼう</h1>
+        <p class="selection-subtitle">あなたのパートナーとなる恐竜を選んでください</p>
+
+        <div id="dinosaursGrid" class="dinosaurs-grid">
+            <!-- JavaScriptで動的に生成 -->
+        </div>
+
+        <div class="coming-soon">
+            <h3>🚀 Coming Soon</h3>
+            <p>今後のアップデートで新しい恐竜（約16種類）が追加される予定です！<br>お楽しみに！</p>
+        </div>
+
+        <div class="action-buttons">
+            <button id="backBtn" class="btn btn-secondary">戻る</button>
+            <button id="startBtn" class="btn btn-primary" disabled>育成開始</button>
+        </div>
+
+        <div class="app-version">Ver 1.0.0</div>
+    </div>
+
+    <script src="dinosaur-species.js"></script>
+    <script>
+        let selectedSpecies = null;
+
+        // LocalStorageからアンロック情報を取得
+        function getUnlockedSpecies() {
+            const data = JSON.parse(localStorage.getItem('healthMonitorData') || '{}');
+            if (data.collection && data.collection.unlockedSpecies) {
+                return data.collection.unlockedSpecies;
+            }
+            // 初期解放種を返す
+            return getInitialSpecies();
+        }
+
+        // 最高連続日数を取得
+        function getMaxConsecutiveDays() {
+            const data = JSON.parse(localStorage.getItem('healthMonitorData') || '{}');
+            return data.stats?.longestStreak || 0;
+        }
+
+        // 恐竜カードを生成
+        function createDinosaurCard(species, isUnlocked) {
+            const card = document.createElement('div');
+            card.className = `dinosaur-card ${isUnlocked ? '' : 'locked'}`;
+            if (!isUnlocked) {
+                card.innerHTML = `
+                    <div class="lock-icon">🔒</div>
+                    <div class="dinosaur-preview">
+                        <div style="font-size: 4rem; filter: grayscale(100%) brightness(0.5);">🦕</div>
+                    </div>
+                    <h3 class="dinosaur-name">???</h3>
+                    <p class="dinosaur-scientific">未発見</p>
+                    <div class="unlock-requirement">🏆 ${species.unlockCondition}日連続達成で解放</div>
+                `;
+            } else {
+                const typeClass = `type-${species.type}`;
+                const typeLabel = {
+                    carnivore: '肉食',
+                    herbivore: '草食',
+                    flying: '翼竜'
+                }[species.type] || '';
+
+                card.innerHTML = `
+                    <div class="dinosaur-preview">
+                        <img src="${species.stages[0].image}" alt="${species.name}" style="width:64px; height:64px; image-rendering: pixelated; transform: scale(1.5); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); border-radius: 50%;">
+                    </div>
+                    <h3 class="dinosaur-name">${species.name}</h3>
+                    <p class="dinosaur-scientific">${species.scientificName}</p>
+                    <span class="dinosaur-type ${typeClass}">${typeLabel}</span>
+                    <p class="dinosaur-description">${species.description}</p>
+                `;
+
+                card.addEventListener('click', () => selectDinosaur(species.id, card));
+            }
+
+            return card;
+        }
+
+        // 恐竜を選択
+        function selectDinosaur(speciesId, cardElement) {
+            // 既存の選択を解除
+            document.querySelectorAll('.dinosaur-card.selected').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // 新しい選択を設定
+            cardElement.classList.add('selected');
+            selectedSpecies = speciesId;
+
+            // ボタンを有効化
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        // 恐竜一覧を表示
+        function displayDinosaurs() {
+            const grid = document.getElementById('dinosaursGrid');
+            const unlockedSpecies = getUnlockedSpecies();
+            const maxDays = getMaxConsecutiveDays();
+
+            // すべての恐竜種を取得
+            const allSpecies = getAllSpecies();
+
+            allSpecies.forEach(species => {
+                const isUnlocked = unlockedSpecies.includes(species.id);
+                const card = createDinosaurCard(species, isUnlocked);
+                grid.appendChild(card);
+            });
+        }
+
+        // 育成開始
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!selectedSpecies) return;
+
+            // LocalStorageに選択した恐竜を保存
+            const data = JSON.parse(localStorage.getItem('healthMonitorData') || '{}');
+
+            data.currentDinosaur = {
+                species: selectedSpecies,
+                consecutiveDays: 0,
+                lastRecordDate: null,
+                startDate: new Date().toISOString().split('T')[0],
+                generation: (data.currentDinosaur?.generation || 0) + 1
+            };
+
+            // コレクションデータの初期化（初回のみ）
+            if (!data.collection) {
+                data.collection = {
+                    unlockedSpecies: getInitialSpecies(),
+                    completedDinosaurs: []
+                };
+            }
+
+            localStorage.setItem('healthMonitorData', JSON.stringify(data));
+
+            // メインページに移動
+            window.location.href = 'index.html';
+        });
+
+        // 戻るボタン
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // ページ読み込み時に恐竜一覧を表示
+        displayDinosaurs();
+    </script>
+</body>
+
+</html>

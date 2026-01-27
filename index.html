@@ -454,6 +454,8 @@
             <header class="app-header">
                 <h1 style="margin: 0; font-size: 1.5rem;">🦕 体調モニター</h1>
                 <div class="header-buttons">
+                    <a href="history-calendar.html" class="icon-link" aria-label="カレンダー">📅</a>
+                    <a href="encyclopedia.html" class="icon-link" aria-label="図鑑">📚</a>
                     <button class="settings-btn" onclick="openSettings()" aria-label="設定">⚙️</button>
                 </div>
             </header>
@@ -634,6 +636,11 @@
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                     <h3>📊 最近の記録 (<span id="recordCount">0</span>件)</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="graph.html"
+                            style="background: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">📈
+                            グラフ表示</a>
+                    </div>
                 </div>
                 <div class="data-controls">
                     <button class="export-btn" onclick="exportData()">⬇️ データエクスポート</button>

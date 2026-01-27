@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恐竜図鑑 - 体調モニター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+
+        .back-btn {
+            background: #94a3b8;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background: #64748b;
+        }
+
+        .dino-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .dino-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .dino-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .dino-card.locked {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+
+        .dino-image {
+            width: 150px;
+            height: 150px;
+            image-rendering: pixelated;
+            object-fit: contain;
+            margin-bottom: 1rem;
+        }
+
+        .dino-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            background: #e2e8f0;
+            height: 8px;
+            border-radius: 4px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .stars {
+            font-size: 1.5rem;
+            color: #fbbf24;
+        }
+
+        .lock-icon {
+            font-size: 3rem;
+            color: #cbd5e1;
+            margin-bottom: 1rem;
+        }
+
+        .stages-preview {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .stage-thumb {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            cursor: pointer;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .stage-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+
+        .stage-thumb.active {
+            border-color: #667eea;
+            transform: scale(1.2);
+            box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .stage-thumb.locked {
+            cursor: not-allowed;
+            opacity: 0.5;
+            background: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 恐竜図鑑</h1>
+            <a href="index.html" class="back-btn">← 戻る</a>
+        </header>
+
+        <div class="dino-grid" id="dinoGrid"></div>
+    </div>
+
+    <script>
+        const dinosaurs = {
+            trex: {
+                name: 'ティラノサウルス',
+                scale: 1.2,
+                stages: {
+                    0: 'trex_egg.png',
+                    1: 'trex_baby.png',
+                    2: 'trex_child.png',
+                    3: 'trex_adult.png'
+                }
+            },
+            pteranodon: {
+                name: 'プテラノドン',
+                scale: 1.2,
+                stages: {
+                    0: 'pteranodon_egg.png',
+                    1: 'pteranodon_baby.png',
+                    2: 'pteranodon_child.png',
+                    3: 'pteranodon_adult.png'
+                }
+            },
+            triceratops: {
+                name: 'トリケラトプス',
+                scale: 1.2,
+                stages: {
+                    0: 'triceratops_egg.png',
+                    1: 'triceratops_baby.png',
+                    2: 'triceratops_child.png',
+                    3: 'triceratops_adult.png'
+                }
+            },
+            stegosaurus: {
+                name: 'ステゴサウルス',
+                scale: 1.2,
+                stages: {
+                    0: 'stegosaurus_egg.png',
+                    1: 'stegosaurus_baby.png',
+                    2: 'stegosaurus_child.png',
+                    3: 'stegosaurus_adult.png'
+                }
+            },
+            spinosaurus: {
+                name: 'スピノサウルス',
+                scale: 1.2,
+                stages: {
+                    0: 'spinosaurus_egg.png',
+                    1: 'spinosaurus_baby.png',
+                    2: 'spinosaurus_child.png',
+                    3: 'spinosaurus_adult.png'
+                }
+            },
+            styracosaurus: {
+                name: 'スティラコサウルス',
+                scale: 1.2,
+                stages: {
+                    0: 'styracosaurus_egg.png',
+                    1: 'styracosaurus_baby.png',
+                    2: 'styracosaurus_child.png',
+                    3: 'styracosaurus_adult.png'
+                }
+            }
+        };
+
+        const encyclopedia = JSON.parse(localStorage.getItem('encyclopedia') || '{}');
+
+        function renderEncyclopedia() {
+            const grid = document.getElementById('dinoGrid');
+            grid.innerHTML = '';
+
+            Object.keys(dinosaurs).forEach(dinoKey => {
+                const dino = dinosaurs[dinoKey];
+                const entry = encyclopedia[dinoKey];
+                const maxStage = entry ? entry.maxStage : -1;
+                const isUnlocked = maxStage >= 0;
+
+                const card = document.createElement('div');
+                card.className = `dino-card ${!isUnlocked ? 'locked' : ''}`;
+
+                // 現在表示中のステージ（初期値は最大ステージまたは0）
+                let currentDisplayStage = isUnlocked ? maxStage : 0;
+                const scale = dino.scale || 1.0;
+
+                // カードのユニークID
+                const cardId = `card-${dinoKey}`;
+                card.id = cardId;
+
+                let content = '';
+
+                if (isUnlocked) {
+                    const progress = ((maxStage + 1) / 4) * 100;
+                    const stars = '★'.repeat(maxStage + 1) + '☆'.repeat(3 - maxStage);
+
+                    content = `
+                        <div class="image-area">
+                            <img src="assets/characters/${dino.stages[maxStage]}" 
+                                 alt="${dino.name}" 
+                                 class="dino-image main-img" 
+                                 style="transform: scale(${scale})">
+                        </div>
+                        <div class="dino-name name-display">${dino.name}</div>
+                        <div class="progress-text">到達段階: ${maxStage + 1}/4</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="stars">${stars}</div>
+                    `;
+                } else {
+                    content = `
+                        <div class="lock-icon">🔒</div>
+                        <div class="dino-name">？？？</div>
+                        <div class="progress-text">未発見</div>
+                    `;
+                }
+
+                // サムネイル生成
+                content += '<div class="stages-preview">';
+                for (let i = 0; i < 4; i++) {
+                    const isStageUnlocked = i <= maxStage;
+                    const thumbClass = `stage-thumb ${i === currentDisplayStage && isUnlocked ? 'active' : ''} ${!isStageUnlocked ? 'locked' : ''}`;
+                    const imgContent = isStageUnlocked
+                        ? `<img src="assets/characters/${dino.stages[i]}" alt="Stage ${i}">`
+                        : '';
+
+                    // クリックイベントは後で付与するか、インラインで書く
+                    // ここではインラインで updateDinoDisplay を呼ぶ形にする
+                    const onClick = isStageUnlocked
+                        ? `onclick="updateDinoDisplay('${dinoKey}', ${i}, ${scale})"`
+                        : '';
+
+                    content += `<div class="${thumbClass}" ${onClick}>${imgContent}</div>`;
+                }
+                content += '</div>';
+
+                card.innerHTML = content;
+                grid.appendChild(card);
+            });
+        }
+
+        // 表示切り替え関数
+        window.updateDinoDisplay = function (dinoKey, stage, scale) {
+            const card = document.getElementById(`card-${dinoKey}`);
+            if (!card) return;
+
+            const dino = dinosaurs[dinoKey];
+
+            // 画像更新
+            const img = card.querySelector('.main-img');
+            if (img) {
+                img.src = `assets/characters/${dino.stages[stage]}`;
+            }
+
+            // サムネイルのactive状態更新
+            const thumbs = card.querySelectorAll('.stage-thumb');
+            thumbs.forEach((thumb, index) => {
+                if (index === stage) thumb.classList.add('active');
+                else thumb.classList.remove('active');
+            });
+        }
+
+        renderEncyclopedia();
+    </script>
+</body>
+
+</html>

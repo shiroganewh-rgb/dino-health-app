@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>グラフ - 体調モニター</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+
+        .back-btn {
+            background: #94a3b8;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-btn:hover {
+            background: #64748b;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .chart-container {
+            position: relative;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 体調グラフ</h1>
+            <a href="index.html" class="back-btn">← 戻る</a>
+        </header>
+
+        <div class="stats-summary">
+            <div class="stat">
+                <div class="stat-value" id="totalDays">0</div>
+                <div class="stat-label">総記録日数</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="avgValue">-</div>
+                <div class="stat-label">平均体調値</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="maxValue">-</div>
+                <div class="stat-label">最高値</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="minValue">-</div>
+                <div class="stat-label">最低値</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2 style="color: #667eea; margin-bottom: 1rem; text-align: center;">直近30日間の推移</h2>
+            <canvas id="healthChart" width="800" height="400"></canvas>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #667eea;"></div>
+                    <span>体調値</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const records = JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]');
+
+        function init() {
+            updateStats();
+            drawChart();
+        }
+
+        function updateStats() {
+            if (records.length === 0) {
+                document.getElementById('totalDays').textContent = '0';
+                document.getElementById('avgValue').textContent = '-';
+                document.getElementById('maxValue').textContent = '-';
+                document.getElementById('minValue').textContent = '-';
+                return;
+            }
+
+            const values = records.map(r => r.value);
+            const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+
+            document.getElementById('totalDays').textContent = records.length;
+            document.getElementById('avgValue').textContent = avg;
+            document.getElementById('maxValue').textContent = max;
+            document.getElementById('minValue').textContent = min;
+        }
+
+        function drawChart() {
+            const canvas = document.getElementById('healthChart');
+            const ctx = canvas.getContext('2d');
+
+            // 直近30日分のデータを取得
+            const last30Days = getLast30Days();
+            const data = last30Days.map(date => {
+                const record = records.find(r => r.date === date);
+                return record ? record.value : null;
+            });
+
+            // キャンバスサイズ
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = 50;
+            const chartWidth = width - padding * 2;
+            const chartHeight = height - padding * 2;
+
+            // 背景
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            // グリッド線と目盛り
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#64748b';
+
+            // Y軸（1-10）
+            for (let i = 0; i <= 10; i++) {
+                const y = padding + chartHeight - (i / 10) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+                ctx.fillText(i.toString(), padding - 25, y + 4);
+            }
+
+            // データポイントとライン
+            if (data.some(d => d !== null)) {
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+
+                let started = false;
+                data.forEach((value, index) => {
+                    if (value !== null) {
+                        const x = padding + (index / (data.length - 1)) * chartWidth;
+                        const y = padding + chartHeight - (value / 10) * chartHeight;
+
+                        if (!started) {
+                            ctx.moveTo(x, y);
+                            started = true;
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                });
+                ctx.stroke();
+
+                // データポイント
+                data.forEach((value, index) => {
+                    if (value !== null) {
+                        const x = padding + (index / (data.length - 1)) * chartWidth;
+                        const y = padding + chartHeight - (value / 10) * chartHeight;
+
+                        // 色分け
+                        if (value >= 8) ctx.fillStyle = '#10b981';
+                        else if (value >= 6) ctx.fillStyle = '#3b82f6';
+                        else if (value >= 4) ctx.fillStyle = '#f59e0b';
+                        else ctx.fillStyle = '#ef4444';
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // 外枠
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                });
+            }
+
+            // X軸ラベル（日付）
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+
+            [0, 14, 29].forEach(index => {
+                const x = padding + (index / (data.length - 1)) * chartWidth;
+                const date = last30Days[index];
+                const label = new Date(date).getDate() + '日';
+                ctx.fillText(label, x, height - padding + 20);
+            });
+
+            // 軸ラベル
+            ctx.save();
+            ctx.font = '14px sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.textAlign = 'center';
+            ctx.fillText('体調値', padding - 30, padding - 10);
+            ctx.restore();
+        }
+
+        function getLast30Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toISOString().split('T')[0]);
+            }
+            return days;
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
