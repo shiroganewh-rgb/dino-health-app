@@ -172,6 +172,8 @@
         }
 
         .character-display {
+            position: relative;
+            /* パーティクルの基準点 */
             text-align: center;
             padding: 2rem 1rem;
             margin: 1rem 0;
@@ -191,6 +193,10 @@
             transition: transform 0.3s ease;
             /* 画像を中央に配置し、サイズを統一 */
             object-position: center;
+            cursor: pointer;
+            /* タップ可能であることを示す */
+            user-select: none;
+            /* テキスト選択を防止 */
         }
 
         .character-emoji.growing {
@@ -228,6 +234,82 @@
 
             100% {
                 transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* タップアクション用アニメーション */
+        @keyframes hop {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-40px) scale(1.15);
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes wiggle {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            20% {
+                transform: rotate(-15deg);
+            }
+
+            60% {
+                transform: rotate(15deg);
+            }
+        }
+
+        .character-emoji.hop {
+            animation: hop 0.6s ease !important;
+        }
+
+        .character-emoji.spin {
+            animation: spin 0.8s ease !important;
+        }
+
+        .character-emoji.wiggle {
+            animation: wiggle 0.5s ease !important;
+        }
+
+        /* パーティクルエフェクト */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 2rem;
+            z-index: 100;
+            animation: fly-up 1.5s ease-out forwards;
+        }
+
+        @keyframes fly-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0);
+            }
+
+            50% {
+                transform: translateY(-60px) scale(1.3);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) scale(0.6);
             }
         }
 
@@ -532,6 +614,88 @@
                         font-size: 1.2rem !important;
                     }
                 }
+
+                /* ニックネーム機能のスタイル */
+                .nickname-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    margin-bottom: 0.5rem;
+                }
+
+                .edit-nickname-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    opacity: 0.6;
+                    transition: opacity 0.2s;
+                    padding: 4px;
+                }
+
+                .edit-nickname-btn:hover {
+                    opacity: 1;
+                }
+
+                /* ニックネームモーダル */
+                .nickname-modal-content {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 20px;
+                    width: 90%;
+                    max-width: 400px;
+                    text-align: center;
+                    position: relative;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                }
+
+                .nickname-input-group {
+                    display: flex;
+                    gap: 8px;
+                    margin: 1.5rem 0;
+                }
+
+                .nickname-input {
+                    flex: 1;
+                    padding: 12px;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 12px;
+                    font-size: 1rem;
+                    outline: none;
+                    transition: border-color 0.3s;
+                }
+
+                .nickname-input:focus {
+                    border-color: #667eea;
+                }
+
+                .random-name-btn {
+                    background: #f1f5f9;
+                    border: none;
+                    border-radius: 12px;
+                    width: 48px;
+                    cursor: pointer;
+                    font-size: 1.2rem;
+                    transition: background 0.2s;
+                }
+
+                .random-name-btn:hover {
+                    background: #e2e8f0;
+                }
+
+                .modal-buttons {
+                    display: flex;
+                    gap: 1rem;
+                    justify-content: center;
+                }
+
+                /* 履歴リスト内のニックネーム */
+                .history-nickname {
+                    font-weight: bold;
+                    color: #4b5563;
+                    margin-right: 0.5rem;
+                }
             </style>
 
             <!-- ステップ1 -->
@@ -574,8 +738,12 @@
 
             <!-- キャラクター表示 -->
             <div class="character-display" id="characterDisplay">
-                <img src="assets/characters/trex_egg.png" alt="タマゴ" class="character-emoji" id="characterEmoji">
-                <div class="character-name" id="characterName">タマゴ</div>
+                <img src="assets/characters/trex_egg.png" alt="タマゴ" class="character-emoji" id="characterEmoji"
+                    onclick="onCharacterTap()">
+                <div class="nickname-container">
+                    <div class="character-name" id="characterName">タマゴ</div>
+                    <button class="edit-nickname-btn" onclick="openNicknameModal()" title="名前を変更">✎</button>
+                </div>
                 <div class="character-stats" id="characterStats">連続記録: 0日</div>
                 <div class="next-stage" id="nextStage">記録すると孵化します！</div>
             </div>
@@ -615,6 +783,24 @@
                 <p style="color: #64748b;">一緒に成長する恐竜を選んでください</p>
                 <div class="dino-options" id="dinoSelectionGrid">
                     <!-- JavaScriptで動的生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ニックネーム編集モーダル -->
+        <div class="selection-modal" id="nicknameModal">
+            <div class="nickname-modal-content">
+                <h2 style="margin-bottom: 0.5rem;">🏷️ ニックネーム設定</h2>
+                <p style="color: #64748b; font-size: 0.9rem;">パートナーに名前をつけよう</p>
+
+                <div class="nickname-input-group">
+                    <input type="text" id="nicknameInput" class="nickname-input" placeholder="名前を入力..." maxlength="10">
+                    <button class="random-name-btn" onclick="suggestRandomName()" title="ランダム提案">🎲</button>
+                </div>
+
+                <div class="modal-buttons">
+                    <button class="btn-secondary" onclick="closeNicknameModal()">キャンセル</button>
+                    <button class="btn-primary" onclick="saveNickname()">保存する</button>
                 </div>
             </div>
         </div>
@@ -988,6 +1174,68 @@
             }
         }
 
+        // キャラクタータップアクション
+        function onCharacterTap() {
+            if (!growthData.selectedDinosaur) return; // 恐竜が選択されていない場合は何もしない
+
+            const img = document.getElementById('characterEmoji');
+            const container = document.querySelector('.character-display');
+            const stage = getStage(growthData.consecutiveDays).stage;
+
+            // アニメーション選択（成長段階別）
+            const animations = getAnimationsForStage(stage);
+            const randomAnim = animations[Math.floor(Math.random() * animations.length)];
+
+            // アニメーション適用
+            img.classList.add(randomAnim);
+            setTimeout(() => img.classList.remove(randomAnim), 1000);
+
+            // パーティクルエフェクト
+            createParticleEffect(container, stage);
+        }
+
+        // 成長段階に応じたアニメーションを取得
+        function getAnimationsForStage(stage) {
+            switch (stage) {
+                case 0: return ['wiggle']; // タマゴ
+                case 1: return ['hop', 'wiggle']; // 赤ちゃん
+                case 2: return ['hop', 'spin']; // 子供
+                case 3: return ['hop', 'spin']; // 大人
+                default: return ['hop'];
+            }
+        }
+
+        // パーティクルエフェクト生成
+        function createParticleEffect(container, stage) {
+            // 成長段階に応じた絵文字
+            const emojis = {
+                0: ['✨', '💫'], // タマゴ
+                1: ['❤️', '💕'], // 赤ちゃん
+                2: ['⭐', '🌟'], // 子供
+                3: ['❤️', '⭐', '💖', '✨'] // 大人
+            };
+
+            const particles = emojis[stage] || ['❤️'];
+            const particleCount = stage === 3 ? 6 : 4; // 大人は多め
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+
+                // ランダムな位置（中心から広がるように）
+                const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5);
+                const distance = 30 + Math.random() * 30;
+                particle.style.left = `calc(50% + ${Math.cos(angle) * distance}px)`;
+                particle.style.top = `calc(50% + ${Math.sin(angle) * distance}px)`;
+
+                container.appendChild(particle);
+
+                // 1.5秒後に削除
+                setTimeout(() => particle.remove(), 1500);
+            }
+        }
+
         function selectRange(range) {
             const numbers = range === 'good' ? [8, 9, 10] :
                 range === 'normal' ? [4, 5, 6, 7] : [1, 2, 3];
@@ -1172,6 +1420,47 @@
                 }
             };
             reader.readAsText(file);
+        };
+        reader.readAsText(file);
+        }
+
+        // ニックネーム機能
+        function openNicknameModal() {
+            const currentName = growthData.nickname || '';
+            document.getElementById('nicknameInput').value = currentName;
+            document.getElementById('nicknameModal').style.display = 'flex';
+        }
+
+        function closeNicknameModal() {
+            document.getElementById('nicknameModal').style.display = 'none';
+        }
+
+        function saveNickname() {
+            const newName = document.getElementById('nicknameInput').value.trim();
+            if (newName) {
+                growthData.nickname = newName;
+            } else {
+                delete growthData.nickname; // 空の場合は削除（デフォルト名を表示）
+            }
+
+            // 保存
+            localStorage.setItem('growthData', JSON.stringify(growthData));
+
+            // 画面更新
+            updateCharacterDisplay();
+            closeNicknameModal();
+            alert('ニックネームを保存しました！🏷️');
+        }
+
+        function suggestRandomName() {
+            const names = [
+                'レックス', 'ポチ', 'タマ', 'キング', 'ダイナ',
+                'ガブ', 'ファング', 'モコ', 'コロ', 'リュウ',
+                'バロン', 'エース', 'チョコ', 'マロン', 'ラッキー',
+                'スパイク', 'ロッキー', 'レオ', 'ソラ', 'カイ'
+            ];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            document.getElementById('nicknameInput').value = randomName;
         }
         // 設定モーダル
         function openSettings() {
