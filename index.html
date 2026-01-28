@@ -518,62 +518,18 @@
 
                 /* スマホ用調整 */
                 @media (max-width: 480px) {
-                    body {
-                        margin: 0;
-                        padding: 0.5rem;
-                    }
-
                     .container {
                         padding: 1rem;
-                        border-radius: 12px;
                     }
 
                     .app-header {
                         flex-direction: row;
+                        /* 横並び維持（アイコン化したので収まるはず） */
                         margin-bottom: 1.5rem;
                     }
 
                     h1 {
                         font-size: 1.2rem !important;
-                    }
-
-                    /* ボタンサイズ最適化（タッチ対応） */
-                    .emoji-btn {
-                        padding: 1.25rem;
-                        min-width: 90px;
-                        font-size: 1.8rem;
-                    }
-
-                    .number-btn {
-                        padding: 0.875rem;
-                        font-size: 1.1rem;
-                    }
-
-                    /* キャラクター画像サイズ調整 */
-                    .character-emoji {
-                        width: 180px;
-                        height: 180px;
-                    }
-
-                    /* モーダル調整 */
-                    .selection-content {
-                        width: 95% !important;
-                        padding: 1.25rem !important;
-                    }
-
-                    .dino-card {
-                        min-width: 120px;
-                        padding: 1.25rem;
-                    }
-
-                    /* 設定画面調整 */
-                    .settings-section {
-                        padding: 1.25rem;
-                    }
-
-                    .action-btn {
-                        padding: 1rem 1.25rem;
-                        font-size: 0.95rem;
                     }
                 }
             </style>
@@ -1016,9 +972,17 @@
 
             document.getElementById('characterStats').textContent = `連続記録: ${growthData.consecutiveDays}日`;
 
+            // 成長段階に応じたメッセージ
             if (stageInfo.next !== null) {
-                document.getElementById('nextStage').textContent =
-                    stageInfo.next === 1 ? '記録すると孵化します！' : `あと${stageInfo.next}日で成長！`;
+                let message;
+                if (stageInfo.stage === 0) {
+                    // タマゴ段階
+                    message = '記録すると孵化します！';
+                } else {
+                    // 赤ちゃん、子供段階
+                    message = `あと${stageInfo.next}日で成長！`;
+                }
+                document.getElementById('nextStage').textContent = message;
             } else {
                 document.getElementById('nextStage').textContent = '最大レベル達成！';
             }
