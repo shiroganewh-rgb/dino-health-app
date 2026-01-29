@@ -764,6 +764,9 @@
                         <a href="graph.html"
                             style="background: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">📈
                             グラフ表示</a>
+                        <button onclick="openNicknameModal()"
+                            style="background: #8b5cf6; color: white; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem;">🏷️
+                            名前変更</button>
                     </div>
                 </div>
                 <div class="data-controls">
@@ -1146,7 +1149,20 @@
 
             img.src = stageInfo.image;
             img.alt = stageInfo.name;
-            document.getElementById('characterName').textContent = stageInfo.name;
+
+            // 名前更新（ニックネームがあればそれを表示、なければ種族名のみ）
+            const speciesName = DINOSAUR_SPECIES[growthData.selectedDinosaur].name;
+            let displayName;
+
+            if (growthData.nickname) {
+                // ニックネームがある場合: "ニックネーム (種族名) (Lv.X)"
+                displayName = `${growthData.nickname} (${speciesName}) (Lv.${stageInfo.stage})`;
+            } else {
+                // ニックネームがない場合: "種族名 (Lv.X)"
+                displayName = `${speciesName} (Lv.${stageInfo.stage})`;
+            }
+
+            document.getElementById('characterName').textContent = displayName;
 
             // スケール適用
             const dino = dinosaurs[growthData.selectedDinosaur];
@@ -1420,188 +1436,188 @@
                 }
             };
             reader.readAsText(file);
+        }
 
+        // ニックネーム機能
+        function openNicknameModal() {
+            const currentName = growthData.nickname || '';
+            document.getElementById('nicknameInput').value = currentName;
+            document.getElementById('nicknameModal').style.display = 'flex';
+        }
 
-            // ニックネーム機能
-            function openNicknameModal() {
-                const currentName = growthData.nickname || '';
-                document.getElementById('nicknameInput').value = currentName;
-                document.getElementById('nicknameModal').style.display = 'flex';
+        function closeNicknameModal() {
+            document.getElementById('nicknameModal').style.display = 'none';
+        }
+
+        function saveNickname() {
+            const newName = document.getElementById('nicknameInput').value.trim();
+            if (newName) {
+                growthData.nickname = newName;
+            } else {
+                delete growthData.nickname; // 空の場合は削除（デフォルト名を表示）
             }
 
-            function closeNicknameModal() {
-                document.getElementById('nicknameModal').style.display = 'none';
-            }
+            // 保存
+            localStorage.setItem('growthData', JSON.stringify(growthData));
 
-            function saveNickname() {
-                const newName = document.getElementById('nicknameInput').value.trim();
-                if (newName) {
-                    growthData.nickname = newName;
-                } else {
-                    delete growthData.nickname; // 空の場合は削除（デフォルト名を表示）
-                }
+            // 画面更新
+            updateCharacterDisplay();
+            closeNicknameModal();
+            alert('ニックネームを保存しました！🏷️');
+        }
 
-                // 保存
-                localStorage.setItem('growthData', JSON.stringify(growthData));
+        function suggestRandomName() {
+            const names = [
+                'レックス', 'ポチ', 'タマ', 'キング', 'ダイナ',
+                'ガブ', 'ファング', 'モコ', 'コロ', 'リュウ',
+                'バロン', 'エース', 'チョコ', 'マロン', 'ラッキー',
+                'スパイク', 'ロッキー', 'レオ', 'ソラ', 'カイ'
+            ];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            document.getElementById('nicknameInput').value = randomName;
+        }
+        // 設定モーダル
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
 
-                // 画面更新
-                updateCharacterDisplay();
-                closeNicknameModal();
-                alert('ニックネームを保存しました！🏷️');
-            }
+            // 開いた時にエクスポートデータを自動生成
+            const data = {
+                version: 1,
+                timestamp: Date.now(),
+                simpleHealthRecords: JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]'),
+                growthData: JSON.parse(localStorage.getItem('growthData') || '{}'),
+                encyclopedia: JSON.parse(localStorage.getItem('encyclopedia') || '{}')
+            };
+            document.getElementById('exportText').value = JSON.stringify(data);
+        }
 
-            function suggestRandomName() {
-                const names = [
-                    'レックス', 'ポチ', 'タマ', 'キング', 'ダイナ',
-                    'ガブ', 'ファング', 'モコ', 'コロ', 'リュウ',
-                    'バロン', 'エース', 'チョコ', 'マロン', 'ラッキー',
-                    'スパイク', 'ロッキー', 'レオ', 'ソラ', 'カイ'
-                ];
-                const randomName = names[Math.floor(Math.random() * names.length)];
-                document.getElementById('nicknameInput').value = randomName;
-            }
-            // 設定モーダル
-            function openSettings() {
-                document.getElementById('settingsModal').style.display = 'flex';
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
 
-                // 開いた時にエクスポートデータを自動生成
-                const data = {
-                    version: 1,
-                    timestamp: Date.now(),
-                    simpleHealthRecords: JSON.parse(localStorage.getItem('simpleHealthRecords') || '[]'),
-                    growthData: JSON.parse(localStorage.getItem('growthData') || '{}'),
-                    encyclopedia: JSON.parse(localStorage.getItem('encyclopedia') || '{}')
-                };
-                document.getElementById('exportText').value = JSON.stringify(data);
-            }
+        function exportBackup() {
+            const text = document.getElementById('exportText');
+            text.select();
+            document.execCommand('copy');
 
-            function closeSettings() {
-                document.getElementById('settingsModal').style.display = 'none';
-            }
-
-            function exportBackup() {
-                const text = document.getElementById('exportText');
-                text.select();
-                document.execCommand('copy');
-
-                // クリップボードAPIも試行
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text.value).then(() => {
-                        alert('データをコピーしました！\nメモ帳などに貼り付けて保存してください。');
-                    }).catch(() => {
-                        alert('コピーしました（テキストエリアを選択済み）');
-                    });
-                } else {
+            // クリップボードAPIも試行
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text.value).then(() => {
+                    alert('データをコピーしました！\nメモ帳などに貼り付けて保存してください。');
+                }).catch(() => {
                     alert('コピーしました（テキストエリアを選択済み）');
-                }
-            }
-
-            function importBackup() {
-                const text = document.getElementById('importText').value.trim();
-                if (!text) {
-                    alert('データを貼り付けてください');
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(text);
-
-                    // 簡易バリデーション
-                    if (!data.simpleHealthRecords || !data.growthData) {
-                        throw new Error('データの形式が正しくありません');
-                    }
-
-                    if (!confirm('現在のデータは全て上書きされます。\n本当に復元しますか？')) {
-                        return;
-                    }
-
-                    localStorage.setItem('simpleHealthRecords', JSON.stringify(data.simpleHealthRecords));
-                    localStorage.setItem('growthData', JSON.stringify(data.growthData));
-                    if (data.encyclopedia) {
-                        localStorage.setItem('encyclopedia', JSON.stringify(data.encyclopedia));
-                    }
-
-                    alert('データを復元しました！\nアプリを再起動します。');
-                    location.reload();
-
-                } catch (e) {
-                    alert('エラー：データが正しく読み込めませんでした。\n' + e.message);
-                }
-            }
-
-            // 通知機能
-            function initNotification() {
-                updateNotifyButton();
-                checkAndNotify();
-
-                // 毎分チェック（アプリ起動中）
-                setInterval(() => {
-                    const now = new Date();
-                    if (now.getHours() === 7 && now.getMinutes() === 30) {
-                        checkAndNotify();
-                    }
-                }, 60000);
-            }
-
-            function updateNotifyButton() {
-                const btn = document.getElementById('notifyBtn');
-                if (Notification.permission === 'granted') {
-                    btn.textContent = '通知はONです ✅';
-                    btn.style.background = '#10b981';
-                } else if (Notification.permission === 'denied') {
-                    btn.textContent = '通知がブロックされています 🚫';
-                    btn.style.background = '#ef4444';
-                } else {
-                    btn.textContent = '通知設定をONにする 🔔';
-                    btn.style.background = '#8b5cf6';
-                }
-            }
-
-            function toggleNotification() {
-                if (Notification.permission === 'granted') {
-                    alert('通知は既に有効です。');
-                    return;
-                }
-
-                Notification.requestPermission().then(permission => {
-                    updateNotifyButton();
-                    if (permission === 'granted') {
-                        new Notification('通知がONになりました', {
-                            body: '毎朝7:30にリマインダーをお届けします（アプリを開いておくことを推奨します）',
-                            icon: 'assets/icons/icon-192.png'
-                        });
-                    }
                 });
+            } else {
+                alert('コピーしました（テキストエリアを選択済み）');
+            }
+        }
+
+        function importBackup() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                alert('データを貼り付けてください');
+                return;
             }
 
-            function checkAndNotify() {
-                if (Notification.permission !== 'granted') return;
+            try {
+                const data = JSON.parse(text);
 
+                // 簡易バリデーション
+                if (!data.simpleHealthRecords || !data.growthData) {
+                    throw new Error('データの形式が正しくありません');
+                }
+
+                if (!confirm('現在のデータは全て上書きされます。\n本当に復元しますか？')) {
+                    return;
+                }
+
+                localStorage.setItem('simpleHealthRecords', JSON.stringify(data.simpleHealthRecords));
+                localStorage.setItem('growthData', JSON.stringify(data.growthData));
+                if (data.encyclopedia) {
+                    localStorage.setItem('encyclopedia', JSON.stringify(data.encyclopedia));
+                }
+
+                alert('データを復元しました！\nアプリを再起動します。');
+                location.reload();
+
+            } catch (e) {
+                alert('エラー：データが正しく読み込めませんでした。\n' + e.message);
+            }
+        }
+
+        // 通知機能
+        function initNotification() {
+            updateNotifyButton();
+            checkAndNotify();
+
+            // 毎分チェック（アプリ起動中）
+            setInterval(() => {
                 const now = new Date();
-                const todayStr = getVirtualDate().toISOString().split('T')[0];
+                if (now.getHours() === 7 && now.getMinutes() === 30) {
+                    checkAndNotify();
+                }
+            }, 60000);
+        }
 
-                // 今日の記録があるか確認
-                const hasRecord = records.some(r => r.date === todayStr);
+        function updateNotifyButton() {
+            const btn = document.getElementById('notifyBtn');
+            if (Notification.permission === 'granted') {
+                btn.textContent = '通知はONです ✅';
+                btn.style.background = '#10b981';
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = '通知がブロックされています 🚫';
+                btn.style.background = '#ef4444';
+            } else {
+                btn.textContent = '通知設定をONにする 🔔';
+                btn.style.background = '#8b5cf6';
+            }
+        }
 
-                // 7:30以降で、まだ記録がない場合
-                if (!hasRecord) {
-                    // アプリ起動時のチェック（7:30過ぎている場合）
-                    if (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() >= 30)) {
-                        // 既に今日通知済みかチェックするロジックを入れるのがベストだが、
-                        // 簡易的に「起動時に1回出す」ことにする（ここを調整可能）
+        function toggleNotification() {
+            if (Notification.permission === 'granted') {
+                alert('通知は既に有効です。');
+                return;
+            }
 
-                        // 今回はシンプルに通知発行
-                        new Notification('体調記録の時間です', {
-                            body: 'おはようございます！今日の体調を記録して、恐竜を育てましょう🦕',
-                            icon: 'assets/icons/icon-192.png',
-                            tag: 'health-reminder-' + todayStr // 同じ日の重複通知を防ぐタグ
-                        });
-                    }
+            Notification.requestPermission().then(permission => {
+                updateNotifyButton();
+                if (permission === 'granted') {
+                    new Notification('通知がONになりました', {
+                        body: '毎朝7:30にリマインダーをお届けします（アプリを開いておくことを推奨します）',
+                        icon: 'assets/icons/icon-192.png'
+                    });
+                }
+            });
+        }
+
+        function checkAndNotify() {
+            if (Notification.permission !== 'granted') return;
+
+            const now = new Date();
+            const todayStr = getVirtualDate().toISOString().split('T')[0];
+
+            // 今日の記録があるか確認
+            const hasRecord = records.some(r => r.date === todayStr);
+
+            // 7:30以降で、まだ記録がない場合
+            if (!hasRecord) {
+                // アプリ起動時のチェック（7:30過ぎている場合）
+                if (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() >= 30)) {
+                    // 既に今日通知済みかチェックするロジックを入れるのがベストだが、
+                    // 簡易的に「起動時に1回出す」ことにする（ここを調整可能）
+
+                    // 今回はシンプルに通知発行
+                    new Notification('体調記録の時間です', {
+                        body: 'おはようございます！今日の体調を記録して、恐竜を育てましょう🦕',
+                        icon: 'assets/icons/icon-192.png',
+                        tag: 'health-reminder-' + todayStr // 同じ日の重複通知を防ぐタグ
+                    });
                 }
             }
+        }
 
-            // 起動時に通知初期化
-            initNotification();
+        // 起動時に通知初期化
+        initNotification();
     </script>
 </body>
 
