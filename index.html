@@ -696,6 +696,94 @@
                     color: #4b5563;
                     margin-right: 0.5rem;
                 }
+
+                /* 週間サマリー */
+                .weekly-summary {
+                    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                    margin: 1rem 0;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                }
+
+                .weekly-summary h3 {
+                    margin: 0 0 1rem 0;
+                    color: #92400e;
+                    font-size: 1.1rem;
+                }
+
+                .summary-stats {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-bottom: 1rem;
+                }
+
+                .stat-item {
+                    text-align: center;
+                }
+
+                .stat-label {
+                    display: block;
+                    font-size: 0.8rem;
+                    color: #78716c;
+                }
+
+                .stat-value {
+                    display: block;
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: #1e293b;
+                }
+
+                .weekly-chart {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                    height: 80px;
+                    margin: 1rem 0;
+                    padding: 0 0.5rem;
+                }
+
+                .chart-bar {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    width: 12%;
+                }
+
+                .bar-fill {
+                    width: 100%;
+                    max-width: 24px;
+                    background: linear-gradient(to top, #f59e0b, #fbbf24);
+                    border-radius: 4px 4px 0 0;
+                    transition: height 0.3s ease;
+                }
+
+                .bar-empty {
+                    background: #e5e7eb;
+                }
+
+                .bar-label {
+                    font-size: 0.7rem;
+                    color: #78716c;
+                    margin-top: 4px;
+                }
+
+                .bar-value {
+                    font-size: 0.75rem;
+                    font-weight: bold;
+                    color: #1e293b;
+                    margin-bottom: 2px;
+                }
+
+                .weekly-comment {
+                    text-align: center;
+                    font-size: 0.9rem;
+                    color: #57534e;
+                    margin: 0.5rem 0 0 0;
+                    padding-top: 0.5rem;
+                    border-top: 1px dashed #d6d3d1;
+                }
             </style>
 
             <!-- ステップ1 -->
@@ -753,6 +841,27 @@
                 <h2>✅ 記録完了！</h2>
                 <p>体調値: <span id="recordedValue">-</span></p>
                 <p id="encouragement">素晴らしい！</p>
+            </div>
+
+            <!-- 週間サマリー -->
+            <div class="weekly-summary" id="weeklySummary">
+                <h3>📅 今週のまとめ</h3>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">平均スコア</span>
+                        <span class="stat-value" id="weeklyAvg">--</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">達成率</span>
+                        <span class="stat-value" id="weeklyRate">--%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">最高</span>
+                        <span class="stat-value" id="weeklyMax">--</span>
+                    </div>
+                </div>
+                <div class="weekly-chart" id="weeklyChart"></div>
+                <p class="weekly-comment" id="weeklyComment">🦕 まだデータがありません</p>
             </div>
 
             <!-- 履歴 -->
@@ -1365,6 +1474,7 @@
             document.getElementById('result').classList.add('show');
 
             updateHistory();
+            updateWeeklySummary();
         }
 
         function updateHistory() {
@@ -1386,9 +1496,116 @@
             `).join('');
         }
 
+        // ========== 週間サマリー機能 ==========
+
+        function getLastWeekRecords() {
+            const today = new Date();
+            const weekData = [];
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                const record = records.find(r => r.date === dateStr);
+
+                weekData.push({
+                    date: dateStr,
+                    dayName: dayNames[date.getDay()],
+                    value: record ? record.value : null,
+                    isToday: i === 0
+                });
+            }
+
+            return weekData;
+        }
+
+        function calculateWeeklyStats(weekData) {
+            const validRecords = weekData.filter(d => d.value !== null);
+
+            if (validRecords.length === 0) {
+                return { avg: null, max: null, min: null, rate: 0 };
+            }
+
+            const values = validRecords.map(d => d.value);
+            const sum = values.reduce((a, b) => a + b, 0);
+
+            return {
+                avg: (sum / values.length).toFixed(1),
+                max: Math.max(...values),
+                min: Math.min(...values),
+                rate: Math.round((validRecords.length / 7) * 100)
+            };
+        }
+
+        function getWeeklyComment(stats, weekData) {
+            if (stats.avg === null) {
+                return '🦕 記録を始めて、恐竜と一緒に振り返ろう！';
+            }
+
+            const avg = parseFloat(stats.avg);
+            const nickname = growthData.nickname || 'パートナー';
+
+            if (stats.rate === 100) {
+                if (avg >= 8) {
+                    return `🎉 完璧！${nickname}も大喜びだよ！`;
+                } else if (avg >= 5) {
+                    return `✨ 毎日記録できたね！${nickname}が応援してるよ！`;
+                } else {
+                    return `💪 毎日続けた君はすごい！${nickname}と一緒に頑張ろう！`;
+                }
+            } else if (stats.rate >= 70) {
+                return `😊 いい調子！${nickname}も嬉しそう！`;
+            } else if (stats.rate >= 40) {
+                return `🌱 少しずつでOK！${nickname}が待ってるよ！`;
+            } else {
+                return `🦕 ${nickname}が会いたがってるよ！`;
+            }
+        }
+
+        function renderWeeklyChart(weekData) {
+            const chartEl = document.getElementById('weeklyChart');
+            if (!chartEl) return;
+
+            chartEl.innerHTML = weekData.map(day => {
+                const height = day.value ? (day.value / 10) * 60 : 5;
+                const barClass = day.value ? 'bar-fill' : 'bar-fill bar-empty';
+                const valueText = day.value || '-';
+                const labelStyle = day.isToday ? 'font-weight: bold; color: #f59e0b;' : '';
+
+                return `
+                    <div class="chart-bar">
+                        <span class="bar-value">${valueText}</span>
+                        <div class="${barClass}" style="height: ${height}px;"></div>
+                        <span class="bar-label" style="${labelStyle}">${day.dayName}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateWeeklySummary() {
+            const weekData = getLastWeekRecords();
+            const stats = calculateWeeklyStats(weekData);
+
+            // 統計値の表示
+            document.getElementById('weeklyAvg').textContent = stats.avg !== null ? stats.avg : '--';
+            document.getElementById('weeklyRate').textContent = stats.rate + '%';
+            document.getElementById('weeklyMax').textContent = stats.max !== null ? stats.max : '--';
+
+            // グラフ描画
+            renderWeeklyChart(weekData);
+
+            // コメント更新
+            document.getElementById('weeklyComment').textContent = getWeeklyComment(stats, weekData);
+        }
+
+        // ========== 週間サマリー機能ここまで ==========
+
+
         // 初期化
         updateHistory();
         updateCharacterDisplay();
+        updateWeeklySummary();
         checkTodayRecord();
 
         function checkTodayRecord() {
