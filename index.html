@@ -1609,7 +1609,8 @@
         checkTodayRecord();
 
         function checkTodayRecord() {
-            const today = new Date().toISOString().split('T')[0];
+            // AM4:00基準の仮想日付を使用
+            const today = getTodayString();
             const todayRecord = records.find(r => r.date === today);
 
             if (todayRecord) {
